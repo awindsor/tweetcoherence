@@ -29,5 +29,5 @@ to be multiples of the window length. If using sliding windows then, in order to
 
 Care should be taken not to compute term frequencies from overlapping sub-corpora. 
 
-We provide a simple (but slow) countCsvRows to count the number of rows in a CSV  file. This is much slower than wc -l but handles csvs where rows contain text cells that contain embedded newlines. 
+We provide a simple (but slow) countCsvRows to count the number of rows in a CSV  file. This is much slower than wc -l but handles csvs where rows contain text cells that contain embedded newlines. We also provide a file to combine CSVs. This can be done using the command line but the python utility allows different fields to be present in the different CSVs and handles 'extra' unlabel fields gracefully (unlableled fields from different files are assumed distinct by default).
 
