@@ -2,7 +2,7 @@
 import csv
 import argparse
 import pickle
-from collections import Counter
+from collections import Counter , deque
 import math
 import datetime
 import logging
@@ -45,7 +45,7 @@ def tweetdatetime(str):
     return datetime.datetime(year,month,day,hour,minute,second)
 
 def compute_cohesion_file(filename, out_filename, size, tf_filename = None, sliding = False):
-    #Sliding is not yet implemented!
+    #Sliding is not yet implthoroughly tested!
     if tf_filename is None:
         logger.info('Computing Term Frequency for Corpus')
         corpus_freq = Counter()
@@ -78,25 +78,70 @@ def compute_cohesion_file(filename, out_filename, size, tf_filename = None, slid
                 'Duration (s)', 'Cohesion (avg)','Number'] 
                 + [f'Cohesion Pair {i+1}' for i in range(size*(size-1)//2)]
                 )
-        for i, block in enumerate(segment(in_csv,size)):
+        if not sliding:
+            logger.info(f'Computing coherence using disjoint windows.')
+            for i, block in enumerate(segment(in_csv,size)):
+                start_time = tweetdatetime(block[0]['created_at'])
+                start_fmt = start_time.strftime('%a %b %d %H:%M:%S %Z %Y')
+                end_time = tweetdatetime(block[-1]['created_at'])
+                end_fmt = end_time.strftime('%a %b %d %H:%M:%S %Z %Y')
+                if  i % 10000 == 0:
+                        logger.info(f'Processing Block {i} with with tweets starting at {start_fmt} and ending at {end_fmt}.')
+                duration = (end_time - start_time).total_seconds()
+                counter_block = list(map(lambda x: Counter(x['text'].lower().split()),block))
+                counter_pairs = [(count1, count2) for i, count1 in enumerate(
+                        counter_block[:-1]) for count2 in counter_block[i+1:]]
+                cohesion = list(map(lambda x : compute_cohesion(x[0],x[1], corpus_freq), 
+                        counter_pairs))
+                avg_cohesion = sum(cohesion)/len(cohesion)
+                day = start_time.day
+                month = start_time.month
+                out_row = [start_fmt,end_fmt, day, month,duration, avg_cohesion, 
+                        len(cohesion)] + cohesion 
+                out_csv.writerow(out_row)
+        else:
+            logger.info(f'Computing coherence using a sliding window.')
+            block = deque([tweet for i, tweet in zip(range(size),in_csv)],size)
             start_time = tweetdatetime(block[0]['created_at'])
             start_fmt = start_time.strftime('%a %b %d %H:%M:%S %Z %Y')
             end_time = tweetdatetime(block[-1]['created_at'])
             end_fmt = end_time.strftime('%a %b %d %H:%M:%S %Z %Y')
-            if  i % 10000 == 0:
-                    logger.info(f'Processing Block {i} with with tweets starting at {start_fmt} and ending at {end_fmt}.')
-            duration = (end_time - start_time).total_seconds()
-            counter_block = list(map(lambda x: Counter(x['text'].lower().split()),block))
-            counter_pairs = [(count1, count2) for i, count1 in enumerate(
-                    counter_block[:-1]) for count2 in counter_block[i+1:]]
-            cohesion = list(map(lambda x : compute_cohesion(x[0],x[1], corpus_freq), 
-                    counter_pairs))
-            avg_cohesion = sum(cohesion)/len(cohesion)
             day = start_time.day
             month = start_time.month
+            duration = (end_time - start_time).total_seconds()
+            counter_deque = deque(map(lambda x: Counter(x['text'].lower().split()),block),size)
+            cohesion_matrix = deque([
+                [compute_cohesion(counter_deque[i],counter_deque[j], corpus_freq) for j in range(i+1,len(block))]
+                for i in range(len(block)-1)
+                ],len(block)-1)
+            cohesion_flat = [ c for row in cohesion_matrix for c in row]     
+            avg_cohesion = sum(cohesion_flat)/len(cohesion_flat)
             out_row = [start_fmt,end_fmt, day, month,duration, avg_cohesion, 
-                    len(cohesion)] + cohesion 
+                len(cohesion_flat)] + cohesion_flat
             out_csv.writerow(out_row)
+            for i, tweet in enumerate(in_csv,start=2):
+                # if we get here all blocks are of length size
+                block.append(tweet)
+                start_time = tweetdatetime(block[0]['created_at'])
+                start_fmt = start_time.strftime('%a %b %d %H:%M:%S %Z %Y')
+                end_time = tweetdatetime(block[-1]['created_at'])
+                end_fmt = end_time.strftime('%a %b %d %H:%M:%S %Z %Y')
+                day = start_time.day
+                month = start_time.month
+                duration = (end_time - start_time).total_seconds()
+                if  i % 10000 == 0:
+                        logger.info(f'Processing Block {i} with with tweets starting at {start_fmt} and ending at {end_fmt}.')
+                counter_deque.append(Counter(tweet['text'].lower().split()))
+                cohesion_matrix.append([])
+                for j in range(size-1):
+                    cohesion_matrix[j].append(compute_cohesion(counter_deque[j],counter_deque[size-1], corpus_freq))
+                # both of the following could be computed more efficienly from
+                # previous values. Is the additional complexity worth it?
+                cohesion_flat = [ c for row in cohesion_matrix for c in row]     
+                avg_cohesion = sum(cohesion_flat)/len(cohesion_flat)
+                out_row = [start_fmt,end_fmt, day, month,duration, avg_cohesion, 
+                    len(cohesion_flat)] + cohesion_flat
+                out_csv.writerow(out_row)
     
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Compute average similarity amongst pairs in a window of texts. ')
