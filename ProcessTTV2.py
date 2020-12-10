@@ -71,7 +71,7 @@ def englishQ(twt):
         return False
 
 
-def readTTV2(filename,out_filename, fields = None, keep_retweets = True, english_only = True, clean = True):
+def read_tweet_archive(filename,out_filename, fields = None, keep_retweets = True, english_only = True, clean = True):
 
     if not fields: # catch empty list and None
         fields = ttv2fields
@@ -106,8 +106,6 @@ def readTTV2(filename,out_filename, fields = None, keep_retweets = True, english
             date_stamp = tweet['created_at']
             month = month = date_stamp[4:6]
             day = date_stamp[6:8]
-            if month == '03' and day < '30':
-                continue
             if clean:
                 tweet['text']= clean_tweet(tweet['text'])
             if tweet['text'].strip() == '':
@@ -138,7 +136,7 @@ if __name__ == '__main__':
     if args['verbose']:
         logger.handlers[1].setLevel(logging.INFO)
 
-    readTTV2(args['in_file'],args['out_file'], keep_retweets=args['keep_retweets'], 
+    read_tweet_archive(args['in_file'],args['out_file'], keep_retweets=args['keep_retweets'], 
             fields = args['fields'], english_only = args['english_only'], clean = args['clean_text'])
             
 
