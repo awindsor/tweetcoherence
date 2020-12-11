@@ -5,7 +5,7 @@ from contextlib import ExitStack
 import argparse
 
 
-def combine_csv_files(filenames,outfilename):
+def combine_csv_files(filenames,outfilename, ignore = False, coombine = False):
     with ExitStack() as stack:
         files = [stack.enter_context(open(filename,'r')) for filename in filenames]
         fields = {}
@@ -13,28 +13,33 @@ def combine_csv_files(filenames,outfilename):
         for file in files:
             fields[file] = [field for field in csv.DictReader(file).fieldnames if field != '']
             combined_fields += [ field for field in fields[file] if field not in combined_fields ]
-        readers = [csv.DictReader(file,fields[file], restkey = 'extra', restval = '') for file in files]
+        if ignore:
+            readers = [csv.DictReader(file,fields[file]) for file in files]
+        else:
+            readers = [csv.DictReader(file,fields[file], restkey = 'extra', restval = '') for file in files]
         with open(outfilename,'w') as out_file:
             out_csv = csv.writer(out_file)
-            print(combined_fields)
             extra_fields = 0
             out_csv.writerow(combined_fields)
             for reader in readers:
                 max_extra = 0
                 for row in reader:
-                    print(row)
                     write_row = [row.get(field,'') for field in combined_fields]+['']*extra_fields+row.get('extra',[])
-                    print(write_row)
                     max_extra = max(max_extra, len(row.get('extra',[])))
                     out_csv.writerow(write_row)
                 extra_fields += max_extra
                 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Combine CSV files')
-    parser.add_argument('in_files',nargs='+', help = 'List of input .csv files. CSV files are expected to have a header row.')
+    parser.add_argument('in_files',nargs='+', help = 'List of input .csv files. '
+        'CSV files are expected to have a header row. Empty cells in the header '
+        'row are ignored. Cells in columns with empty header cells are recorded as extra fields.')
     parser.add_argument('out_file', help = 'Output .csv file.')
+    parser.add_argument('--combine', help = 'Do not separate extra fields from different files. '
+        'Extra fields will begin in the column after named fields.', action = 'store_true')
+    parser.add_argument('--ignore', help = 'Ignore extra fields.', action='store_true')
     args = vars(parser.parse_args())
-    combine_csv_files(args['in_files'],args['out_file'])
+    combine_csv_files(args['in_files'],args['out_file'], args['ignore'],args['combine'])
 
 
 
