@@ -5,7 +5,7 @@ from contextlib import ExitStack
 import argparse
 
 
-def combine_csv_files(filenames,outfilename, ignore = False, coombine = False):
+def combine_csv_files(filenames,outfilename, ignore = False, combine = False):
     with ExitStack() as stack:
         files = [stack.enter_context(open(filename,'r')) for filename in filenames]
         fields = {}
@@ -23,8 +23,9 @@ def combine_csv_files(filenames,outfilename, ignore = False, coombine = False):
             out_csv.writerow(combined_fields)
             for reader in readers:
                 max_extra = 0
+                padding = [] if combine else ['']*extra_fields 
                 for row in reader:
-                    write_row = [row.get(field,'') for field in combined_fields]+['']*extra_fields+row.get('extra',[])
+                    write_row = [row.get(field,'') for field in combined_fields]+padding+row.get('extra',[])
                     max_extra = max(max_extra, len(row.get('extra',[])))
                     out_csv.writerow(write_row)
                 extra_fields += max_extra
