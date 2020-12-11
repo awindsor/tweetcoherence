@@ -1,9 +1,11 @@
 #! /usr/local/bin/python3
 
+# This has worked for all my CSVs. If there are issues we can consider adding a sniffer for
+# the CSV dialect. 
+
 import csv
 from contextlib import ExitStack 
 import argparse
-
 
 def combine_csv_files(filenames,outfilename, ignore = False, combine = False):
     with ExitStack() as stack:
