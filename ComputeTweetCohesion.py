@@ -45,7 +45,7 @@ def tweetdatetime(str):
     return datetime.datetime(year,month,day,hour,minute,second)
 
 def compute_cohesion_file(filename, out_filename, size, tf_filename = None, sliding = False):
-    #Sliding is not yet implthoroughly tested!
+    #Sliding is not yet thoroughly tested!
     if tf_filename is None:
         logger.info('Computing Term Frequency for Corpus')
         corpus_freq = Counter()
@@ -88,6 +88,9 @@ def compute_cohesion_file(filename, out_filename, size, tf_filename = None, slid
                 if  i % 10000 == 0:
                         logger.info(f'Processing Block {i} with with tweets starting at {start_fmt} and ending at {end_fmt}.')
                 duration = (end_time - start_time).total_seconds()
+                if duration < 0:
+                    logger.error(f'Negative duration block detected.')
+                    logger.error(block)
                 counter_block = list(map(lambda x: Counter(x['text'].lower().split()),block))
                 counter_pairs = [(count1, count2) for i, count1 in enumerate(
                         counter_block[:-1]) for count2 in counter_block[i+1:]]
