@@ -1,5 +1,3 @@
-#! /usr/local/bin/python3
-
 # This has worked for all my CSVs. If there are issues we can consider adding a sniffer for
 # the CSV dialect.
 
@@ -48,12 +46,18 @@ if __name__ == "__main__":
         "CSV files are expected to have a header row. Empty cells in the header "
         "row are ignored. Cells in columns with empty header cells are recorded as extra fields.",
     )
-    parser.add_argument("out_directory", help="Output drectory. Must exist.")
     parser.add_argument(
-        "key_field", help="Column from csv header that uniquely indentifies rows."
+        "out_directory", help="Output drectory. Must exist.", required=True
     )
     parser.add_argument(
-        "text_field", help="Column from csv header that contains text files."
+        "key_field",
+        help="Column from csv header that uniquely indentifies rows.",
+        required=True,
+    )
+    parser.add_argument(
+        "text_field",
+        help="Column from csv header that contains text files.",
+        required=True,
     )
     parser.add_argument(
         "--overwrite",
@@ -61,7 +65,7 @@ if __name__ == "__main__":
         action="store_true",
     )
     args = vars(parser.parse_args())
-    print(args)
+
     extract_files(
         args["in_file"],
         args["out_directory"],
